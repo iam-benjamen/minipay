@@ -1,0 +1,67 @@
+### Variables
+@baseUrl = http://localhost:8081
+@gatewayUrl = http://localhost:8080
+@contentType = application/json
+
+### Register a Customer
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "customer@minipay.com",
+  "phoneNumber": "+2348012345678",
+  "password": "password123",
+  "role": "CUSTOMER"
+}
+
+### Register a Merchant
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "merchant@minipay.com",
+  "phoneNumber": "+2348098765432",
+  "password": "password123",
+  "role": "MERCHANT"
+}
+
+### Register an Admin
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "admin@minipay.com",
+  "phoneNumber": "+2348011111111",
+  "password": "password123",
+  "role": "ADMIN"
+}
+
+
+### Login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "customer@minipay.com",
+  "password": "password123"
+}
+
+> {%
+  client.global.set("accessToken", response.body.data.accessToken);
+  client.global.set("refreshToken", response.body.data.refreshToken);
+%}
+
+### Refresh Token
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: {{contentType}}
+X-Refresh-Token: {{refreshToken}}
+
+> {%
+  client.global.set("accessToken", response.body.data.accessToken);
+  client.global.set("refreshToken", response.body.data.refreshToken);
+%}
+
+### Logout
+POST {{baseUrl}}/api/v1/auth/logout
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
