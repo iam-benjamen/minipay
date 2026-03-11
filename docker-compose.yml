@@ -27,6 +27,45 @@ services:
       timeout: 5s
       retries: 5
 
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    ports:
+      - "8081:8081"
+    env_file: .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/minipay_auth
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file: .env
+    environment:
+      REDIS_HOST: redis
+      AUTH_SERVICE_URL: http://auth-service:8081
+      WALLET_SERVICE_URL: http://wallet-service:8082
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:

@@ -38,7 +38,7 @@ Content-Type: {{contentType}}
 
 
 ### Login
-POST {{baseUrl}}/api/v1/auth/login
+POST {{gatewayUrl}}/api/v1/auth/login
 Content-Type: {{contentType}}
 
 {

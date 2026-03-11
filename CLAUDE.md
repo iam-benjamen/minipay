@@ -11,8 +11,8 @@ mvn clean install
 # Build a specific module
 mvn clean install -pl auth-service -am
 
-# Run a service (from its directory)
-cd auth-service && mvn spring-boot:run
+# Run a service — must run from repo root so spring-dotenv finds .env
+mvn spring-boot:run -pl auth-service -am
 
 # Run all tests
 mvn test
@@ -23,11 +23,18 @@ mvn test -pl auth-service
 # Run a single test class
 mvn test -pl auth-service -Dtest=AuthServiceTest
 
-# Start infrastructure (PostgreSQL + Redis)
-docker compose up -d
+# Start everything (infrastructure + services) via Docker Compose
+cp .env.example .env   # once; fill in real values
+docker compose up --build
+
+# Start without rebuilding images
+docker compose up
+
+# Start infrastructure only (for local Maven dev)
+docker compose up -d postgres redis
 
 # Reset databases (drops all data)
-docker compose down -v && docker compose up -d
+docker compose down -v && docker compose up
 ```
 
 ## Architecture
@@ -84,6 +91,14 @@ private Role role;
 
 **JPA**: `ddl-auto: validate` — schema is managed by Flyway only. Never use `create` or `update`.
 
+**Docker — all module POMs must be copied in every Dockerfile**: the parent `pom.xml` declares all modules; Maven validates their existence even when building a single module with `-pl`. Copy all `*/pom.xml` stubs before running any Maven command.
+
+**Docker — Alpine JRE has no `curl`**: `eclipse-temurin:25-jre-alpine` ships without curl. Use `wget -qO-` in healthchecks instead.
+
+**Docker — TLS 1.2 in build stage**: JDK 25 defaults to TLS 1.3, which some network middleboxes mishandle during Maven dependency downloads (`bad_record_mac` error). Set `ENV MAVEN_OPTS="-Djdk.tls.client.protocols=TLSv1.2"` in the builder stage.
+
+**spring-dotenv working directory**: spring-dotenv finds `.env` relative to the JVM working directory. When running via `mvn spring-boot:run -pl <service> -am`, run from the repo root so the process working directory is the project root where `.env` lives.
+
 ## Coding Standards
 
 - No comments in code unless logic is non-obvious or explicitly requested
@@ -94,6 +109,10 @@ private Role role;
 
 ## Infrastructure
 
-Docker Compose provides PostgreSQL 17 and Redis 7. Init script at `infrastructure/postgres/init.sql` creates all databases (`minipay_auth`, `minipay_wallet`, `minipay_transaction`).
+Docker Compose provides PostgreSQL 17, Redis 7, and all Spring Boot services. Init script at `infrastructure/postgres/init.sql` creates all databases (`minipay_auth`, `minipay_wallet`, `minipay_transaction`).
+
+Environment variables are required — no defaults in `application.yaml`. Copy `.env.example` → `.env` and fill in values. Docker Compose loads `.env` via `env_file:`; local Maven dev uses spring-dotenv to load it automatically (run from repo root).
+
+Dockerfiles use multi-stage builds: `maven:3.9-eclipse-temurin-25` for compilation, `eclipse-temurin:25-jre-alpine` for the runtime image.
 
 HTTP test files (IntelliJ HTTP client): `api-requests/auth.http`
