@@ -1,15 +1,12 @@
-package com.minipay.auth;
+package com.minipay.wallet;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(scanBasePackages = "com.minipay")
-@EnableScheduling
-public class AuthServiceApplication {
+public class WalletApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(AuthServiceApplication.class, args);
+        SpringApplication.run(WalletApplication.class, args);
     }
-
 }

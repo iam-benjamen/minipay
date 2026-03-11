@@ -1,8 +1,10 @@
 package com.minipay.auth.service;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minipay.auth.dto.AuthDtos;
 import com.minipay.auth.entity.User;
+import com.minipay.auth.repository.OutboxEventRepository;
 import com.minipay.auth.repository.UserRepository;
 import com.minipay.common.exception.ConflictException;
 import com.minipay.common.exception.ResourceNotFoundException;
@@ -32,10 +34,16 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private OutboxEventRepository outboxEventRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
     private JwtService jwtService;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private AuthService authService;
@@ -72,11 +80,12 @@ class AuthServiceTest {
         }
 
         @Test
-        void happyPath_savesUserAndReturnsTokens() {
+        void happyPath_savesUserAndReturnsTokens() throws Exception {
             when(userRepository.existsByEmail(validRequest.email())).thenReturn(false);
             when(userRepository.existsByPhoneNumber(validRequest.phoneNumber())).thenReturn(false);
             when(passwordEncoder.encode(validRequest.password())).thenReturn("hashed_password");
             when(userRepository.save(any(User.class))).thenReturn(testUser);
+            when(objectMapper.writeValueAsString(any())).thenReturn("{}");
             when(jwtService.generateAccessToken(any())).thenReturn("access_token");
             when(jwtService.generateRefreshToken(any())).thenReturn("refresh_token");
 
@@ -92,7 +101,7 @@ class AuthServiceTest {
         }
 
         @Test
-        void nullRole_defaultsToCustomer() {
+        void nullRole_defaultsToCustomer() throws Exception {
             var requestWithNullRole = new AuthDtos.RegisterRequest(
                     "customer@minipay.com",
                     "+2348012345678",
@@ -104,6 +113,7 @@ class AuthServiceTest {
             when(userRepository.existsByPhoneNumber(any())).thenReturn(false);
             when(passwordEncoder.encode(any())).thenReturn("hashed");
             when(userRepository.save(any(User.class))).thenReturn(testUser);
+            when(objectMapper.writeValueAsString(any())).thenReturn("{}");
             when(jwtService.generateAccessToken(any())).thenReturn("access_token");
             when(jwtService.generateRefreshToken(any())).thenReturn("refresh_token");
 

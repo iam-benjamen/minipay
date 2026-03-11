@@ -10,16 +10,17 @@ COPY api-gateway/pom.xml api-gateway/
 COPY wallet-service/pom.xml wallet-service/
 
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn dependency:go-offline -pl api-gateway -am -B
+    mvn dependency:go-offline -pl wallet-service -am -B
 
 COPY common/src common/src
-COPY api-gateway/src api-gateway/src
+COPY wallet-service/src wallet-service/src
 
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn package -pl api-gateway -am -DskipTests -B
+    mvn package -pl wallet-service -am -DskipTests -B
 
 FROM eclipse-temurin:25-jre-alpine
+
 WORKDIR /app
-COPY --from=builder /app/api-gateway/target/*.jar app.jar
-EXPOSE 8080
+COPY --from=builder /app/wallet-service/target/*.jar app.jar
+EXPOSE 8082
 ENTRYPOINT ["java", "-jar", "app.jar"]

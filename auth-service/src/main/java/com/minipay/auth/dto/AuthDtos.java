@@ -57,4 +57,6 @@ public class AuthDtos {
             );
         }
     }
+
+    public record UserRegisteredEvent(String userId, String email, String role) {}
 }

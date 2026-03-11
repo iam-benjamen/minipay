@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/auth-service/src/main/resources/db/migration/V2__create_outbox_events_table.sql" value="f33cf559-fc44-4490-a08c-08d61e6c4f4c" />
+    <file url="file://$PROJECT_DIR$/wallet-service/src/main/resources/db/migration/V1__create_wallets_table.sql" value="f33cf559-fc44-4490-a08c-08d61e6c4f4c" />
+  </component>
+</project>

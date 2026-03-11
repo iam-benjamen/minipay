@@ -1,7 +1,11 @@
 package com.minipay.auth.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.minipay.auth.dto.AuthDtos;
+import com.minipay.auth.entity.OutboxEvent;
 import com.minipay.auth.entity.User;
+import com.minipay.auth.repository.OutboxEventRepository;
 import com.minipay.auth.repository.UserRepository;
 import com.minipay.common.exception.ConflictException;
 import com.minipay.common.exception.ResourceNotFoundException;
@@ -20,8 +24,10 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final OutboxEventRepository outboxEventRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public AuthDtos.AuthResponse register(AuthDtos.RegisterRequest request) {
@@ -41,7 +47,19 @@ public class AuthService {
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("User registered: {}", user.getId());
+        log.info("User registered: {}", saved.getId());
+
+        try {
+            String payload = objectMapper.writeValueAsString(
+                new AuthDtos.UserRegisteredEvent(saved.getId().toString(), saved.getEmail(), saved.getRole().name())
+            );
+            outboxEventRepository.save(OutboxEvent.builder()
+                .topic("minipay.user.registered")
+                .payload(payload)
+                .build());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize outbox event", e);
+        }
 
         return buildAuthResponse(saved);
     }

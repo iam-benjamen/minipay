@@ -15,7 +15,7 @@
       </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
-    <data-source source="LOCAL" name="minipay_auth@localhost" uuid="f33cf559-fc44-4490-a08c-08d61e6c4f4c">
+    <data-source source="LOCAL" name="minipay" uuid="f33cf559-fc44-4490-a08c-08d61e6c4f4c">
       <driver-ref>postgresql</driver-ref>
       <synchronize>true</synchronize>
       <imported>true</imported>
