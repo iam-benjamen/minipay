@@ -28,7 +28,7 @@ public class WalletController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<WalletDtos.WalletResponse>> getWallet(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestHeader("X-User-Id") UUID userId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(walletService.getWallet(id, userId)));

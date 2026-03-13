@@ -27,6 +27,10 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
+internal:
+  api:
+    secret: ${INTERNAL_API_SECRET}
+
 management:
   endpoints:
     web:

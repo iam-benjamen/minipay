@@ -47,7 +47,7 @@ Maven monorepo with microservices deployed independently. Each service is a Spri
 |---|---|---|
 | api-gateway | 8080 | none |
 | auth-service | 8081 | minipay_auth |
-| wallet-service | 8082 | minipay_wallet (not started) |
+| wallet-service | 8082 | minipay_wallet |
 | transfer-service | 8083 | TBD (not started) |
 
 ### Request Flow
@@ -69,6 +69,17 @@ The gateway validates JWTs locally (shared secret), injects `X-User-Id` and `X-U
 - Roles: `CUSTOMER`, `MERCHANT`, `ADMIN`
 - Flyway migrations in `src/main/resources/db/migration/`
 - Swagger: `http://localhost:8081/swagger-ui/index.html`
+- Outbox pattern: user registration writes `minipay.user.registered` event to `outbox_events` table in the same transaction as the user save. `OutboxRelayService` polls every 5s and publishes to Kafka.
+
+### Wallet Service
+
+- Kafka consumer creates a default wallet on `minipay.user.registered` (CUSTOMER→PERSONAL/NGN, MERCHANT→BUSINESS/NGN, ADMIN→none)
+- Public endpoints (via gateway): `GET /api/v1/wallets`, `GET /api/v1/wallets/{id}`, `POST /api/v1/wallets`
+- Internal endpoints (service-to-service only, never routed by gateway): `POST /internal/wallets/{id}/credit`, `POST /internal/wallets/{id}/debit`
+- Internal endpoints protected by `X-Internal-Secret` header (validated via `InternalApiInterceptor`); secret in `INTERNAL_API_SECRET` env var
+- Balance updates use atomic JPQL `UPDATE` queries — no separate read before write, overdraft protection in the WHERE clause
+- Every credit/debit writes a `wallet_transactions` row in the same `@Transactional` method
+- Wallet types: `PERSONAL`, `SAVINGS`, `BUSINESS`; statuses: `ACTIVE`, `FROZEN`, `CLOSED`; currencies: `NGN`, `USD`, `GBP`, `EUR`
 
 ### Maven Structure
 
@@ -80,6 +91,10 @@ The gateway validates JWTs locally (shared secret), injects `X-User-Id` and `X-U
 ## Known Gotchas
 
 **Lombok on Java 25**: requires `--add-opens jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED` (already in parent POM). IntelliJ requires annotation processing enabled: Settings → Compiler → Annotation Processors.
+
+**Spring 6 `@PathVariable` / `@RequestHeader` parameter names**: Spring 6.1+ requires the `-parameters` compiler flag to resolve parameter names by reflection. Flag is set in parent POM. Always use explicit names as a fallback: `@PathVariable("id")`, `@RequestHeader("X-User-Id")`.
+
+**Kafka (apache/kafka:3.9.0) Docker config**: use the service hostname in `KAFKA_LISTENERS` for internal listeners (not `0.0.0.0`), reserve `0.0.0.0` only for the host-facing listener. Set `hostname: kafka` on the service. Healthcheck must use full path: `/opt/kafka/bin/kafka-topics.sh`. The `bitnami/kafka` image is not available in this environment.
 
 **PostgreSQL custom enum types**: Hibernate rejects plain VARCHAR for custom PG enums. Use:
 ```java
@@ -116,3 +131,15 @@ Environment variables are required — no defaults in `application.yaml`. Copy `
 Dockerfiles use multi-stage builds: `maven:3.9-eclipse-temurin-25` for compilation, `eclipse-temurin:25-jre-alpine` for the runtime image.
 
 HTTP test files (IntelliJ HTTP client): `api-requests/auth.http`
+
+## Environment Variables
+
+| Variable | Used by |
+|---|---|
+| `JWT_SECRET` | auth-service, api-gateway |
+| `REDIS_HOST`, `REDIS_PORT` | auth-service, api-gateway |
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | auth-service |
+| `WALLET_DB_URL` | wallet-service (uses same `DB_USERNAME`/`DB_PASSWORD`) |
+| `KAFKA_BOOTSTRAP_SERVERS` | auth-service (producer), wallet-service (consumer) |
+| `INTERNAL_API_SECRET` | wallet-service — validates `X-Internal-Secret` header on `/internal/**` |
+| `AUTH_SERVICE_URL`, `WALLET_SERVICE_URL` | api-gateway |

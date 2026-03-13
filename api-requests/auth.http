@@ -8,14 +8,14 @@ POST {{gatewayUrl}}/api/v1/auth/register
 Content-Type: {{contentType}}
 
 {
-  "email": "customer@minipay.com",
-  "phoneNumber": "+2348012345678",
+  "email": "areoben@minipay.com",
+  "phoneNumber": "+234801242678",
   "password": "password123",
   "role": "CUSTOMER"
 }
 
 ### Register a Merchant
-POST {{baseUrl}}/api/v1/auth/register
+POST {{gatewayUrl}}/api/v1/auth/register
 Content-Type: {{contentType}}
 
 {
@@ -26,7 +26,7 @@ Content-Type: {{contentType}}
 }
 
 ### Register an Admin
-POST {{baseUrl}}/api/v1/auth/register
+POST {{gatewayUrl}}/api/v1/auth/register
 Content-Type: {{contentType}}
 
 {

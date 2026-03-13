@@ -5,12 +5,15 @@ import com.minipay.common.exception.ResourceNotFoundException;
 import com.minipay.common.exception.UnauthorizedException;
 import com.minipay.wallet.dto.WalletDtos;
 import com.minipay.wallet.entity.Wallet;
+import com.minipay.wallet.entity.WalletTransaction;
 import com.minipay.wallet.repository.WalletRepository;
+import com.minipay.wallet.repository.WalletTransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,6 +23,7 @@ import java.util.UUID;
 public class WalletService {
 
     private final WalletRepository walletRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
 
     @Transactional
     public void createDefaultWallet(UUID userId, String role) {
@@ -67,7 +71,6 @@ public class WalletService {
         if (walletRepository.existsByUserIdAndTypeAndCurrency(userId, type, currency)) {
             throw new ConflictException("Wallet of this type and currency already exists");
         }
-
         Wallet wallet = Wallet.builder()
                 .userId(userId)
                 .type(type)
@@ -81,6 +84,44 @@ public class WalletService {
         return walletRepository.findByUserId(userId).stream()
                 .map(WalletDtos.WalletResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public WalletDtos.WalletTransactionResponse credit(UUID walletId, WalletDtos.CreditDebitRequest request) {
+        int updated = walletRepository.credit(walletId, request.amount(), Wallet.WalletStatus.ACTIVE);
+        if (updated == 0) {
+            Wallet wallet = walletRepository.findById(walletId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Wallet", walletId.toString()));
+            throw new UnauthorizedException("Wallet is not active: " + wallet.getStatus());
+        }
+        return recordTransaction(walletId, WalletTransaction.TransactionType.CREDIT, request.amount(), request.reference());
+    }
+
+    @Transactional
+    public WalletDtos.WalletTransactionResponse debit(UUID walletId, WalletDtos.CreditDebitRequest request) {
+        int updated = walletRepository.debit(walletId, request.amount(), Wallet.WalletStatus.ACTIVE);
+        if (updated == 0) {
+            Wallet wallet = walletRepository.findById(walletId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Wallet", walletId.toString()));
+            if (wallet.getStatus() != Wallet.WalletStatus.ACTIVE) {
+                throw new UnauthorizedException("Wallet is not active: " + wallet.getStatus());
+            }
+            throw new ConflictException("Insufficient funds");
+        }
+        return recordTransaction(walletId, WalletTransaction.TransactionType.DEBIT, request.amount(), request.reference());
+    }
+
+    private WalletDtos.WalletTransactionResponse recordTransaction(UUID walletId, WalletTransaction.TransactionType type, BigDecimal amount, String reference) {
+        Wallet wallet = walletRepository.findById(walletId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wallet", walletId.toString()));
+        WalletTransaction tx = WalletTransaction.builder()
+                .walletId(walletId)
+                .type(type)
+                .amount(amount)
+                .balanceAfter(wallet.getBalance())
+                .reference(reference)
+                .build();
+        return WalletDtos.WalletTransactionResponse.from(walletTransactionRepository.save(tx));
     }
 
     @Transactional(readOnly = true)
